@@ -2,6 +2,8 @@ import { useState } from 'react'
 import './admin.css'
 import { Ico } from './AdminIcons'
 import { Eyebrow } from './AdminUI'
+import { initials, userLabel } from './format'
+import { useAuth } from '../auth/useAuth'
 import { Dashboard } from './screens/Dashboard'
 import { Users } from './screens/Users'
 import { Payments } from './screens/Payments'
@@ -49,6 +51,10 @@ export function AdminConsole() {
   const [route, setRoute] = useState<Route>('Dashboard')
   const [collapsed, setCollapsed] = useState(false)
   const [bell, setBell] = useState(false)
+
+  const user = useAuth((s) => s.user)
+  const logout = useAuth((s) => s.logout)
+  const name = user ? userLabel(user) : 'Admin'
 
   const Screen = SCREENS[route]
 
@@ -152,9 +158,13 @@ export function AdminConsole() {
               </div>
 
               <div className="admin-chip">
-                <span className="admin-avatar-sm admin-mono">AD</span>
-                {!collapsed && <span className="admin-chip-name">Admin</span>}
+                <span className="admin-avatar-sm admin-mono">{initials(name, 'AD')}</span>
+                {!collapsed && <span className="admin-chip-name">{name}</span>}
               </div>
+
+              <button className="admin-icon-btn" title="Sign out" onClick={() => logout()}>
+                <Ico name="logout" />
+              </button>
             </div>
           </header>
 

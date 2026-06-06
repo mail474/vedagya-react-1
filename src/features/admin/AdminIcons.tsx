@@ -112,6 +112,14 @@ export function Ico({ name, size = 18 }: IcoProps) {
           <polygon points="3 5 21 5 14 13 14 19 10 21 10 13" />
         </svg>
       )
+    case 'logout':
+      return (
+        <svg {...props}>
+          <path d="M14 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h8" />
+          <polyline points="14 8 18 12 14 16" />
+          <line x1="18" y1="12" x2="9" y2="12" />
+        </svg>
+      )
     default:
       return (
         <svg {...props}>
