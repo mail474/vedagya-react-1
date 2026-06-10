@@ -1,16 +1,25 @@
-import { createBrowserRouter } from 'react-router-dom'
-// import HomePage from '@/pages/HomePage'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import NotFoundPage from '@/pages/NotFoundPage'
 import AdminPage from '@/pages/AdminPage'
+import LoginPage from '@/pages/LoginPage'
+import { RequireAdmin } from '@/features/auth/RequireAdmin'
 
 const router = createBrowserRouter([
-  // {
-  //   path: '/',
-  //   element: <HomePage />,
-  // },
   {
     path: '/',
-    element: <AdminPage />,
+    element: <Navigate to="/admin" replace />,
+  },
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
+    path: '/admin',
+    element: (
+      <RequireAdmin>
+        <AdminPage />
+      </RequireAdmin>
+    ),
   },
   {
     path: '*',
