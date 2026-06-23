@@ -27,8 +27,8 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      const { dev_otp } = await sendOtp(phone.trim())
-      setDevOtp(dev_otp ?? null)
+      const res = await sendOtp(phone.trim())
+      setDevOtp(res?.dev_otp ?? null)
       setStep('otp')
     } catch (err) {
       setError(errorMessage(err))

@@ -32,9 +32,10 @@ export interface Tokens {
   is_new_user: boolean
 }
 
-/** Request an OTP. Backend returns it as `dev_otp` until SMS is wired up. */
+/** Request an OTP. The code is delivered by SMS; only in dev (DEBUG) does the
+ *  backend also echo it back as `dev_otp` — in production `data` is `null`. */
 export const sendOtp = (phone: string) =>
-  unwrap<{ dev_otp?: string }>(api.post('/api/v1/auth/otp/send', { phone }))
+  unwrap<{ dev_otp?: string } | null>(api.post('/api/v1/auth/otp/send', { phone }))
 
 export const verifyOtp = (phone: string, otp: string) =>
   unwrap<Tokens>(api.post('/api/v1/auth/otp/verify', { phone, otp }))

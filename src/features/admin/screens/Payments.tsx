@@ -5,6 +5,15 @@ import { getDashboard, listPayments, type AdminPayment, type PaymentStatus } fro
 import { useAsync, useDebounced } from '../hooks'
 import { date, money, moneyCompact, number, titleCase, userLabel } from '../format'
 
+/** Human-readable label for a payment's product SKU. */
+function productLabel(p: AdminPayment): string {
+  if (p.product === 'chat_10') return '10 chats (₹59)'
+  if (p.product === 'chat_25') return '25 chats (₹99)'
+  if (p.product === 'unlimited_month') return 'Unlimited (₹199)'
+  if (p.product === 'report') return p.reference ? `Report: ${p.reference}` : 'Report'
+  return p.category ?? '—'
+}
+
 type Filter = 'All' | 'Paid' | 'Created' | 'Failed'
 
 const FILTER_TO_STATUS: Record<Filter, PaymentStatus | undefined> = {
@@ -90,7 +99,7 @@ export function Payments() {
               <th>User</th>
               <th className="admin-ta-r">Amount</th>
               <th>Status</th>
-              <th>Category</th>
+              <th>Product</th>
               <th>Date</th>
             </tr>
           </thead>
@@ -105,7 +114,7 @@ export function Payments() {
                 <td>
                   <Badge kind={STATUS_KIND[t.status]}>{titleCase(t.status)}</Badge>
                 </td>
-                <td className="admin-cell-dim">{t.category || '—'}</td>
+                <td className="admin-cell-dim">{productLabel(t)}</td>
                 <td className="admin-cell-dim">{date(t.created_at)}</td>
               </tr>
             ))}

@@ -1,7 +1,17 @@
 import { useState } from 'react'
 import { Ico } from '../AdminIcons'
 import { Badge, Btn, Eyebrow, PageHead, Segmented } from '../AdminUI'
-import { getUser, listUsers, updateUser, errorMessage, type AdminUser, type UserRole } from '../api'
+import {
+  getUser,
+  grantCredits,
+  grantReportEntitlement,
+  grantUnlimited,
+  listUsers,
+  updateUser,
+  errorMessage,
+  type AdminUser,
+  type UserRole,
+} from '../api'
 import { useAsync, useDebounced } from '../hooks'
 import { date, initials, money, number, timeAgo, titleCase, userLabel } from '../format'
 
@@ -14,6 +24,19 @@ const FILTER_TO_ACTIVE: Record<Filter, boolean | undefined> = {
 }
 
 const PAGE_SIZE = 30
+
+// Paid report types that can be comped — must match the backend catalogue's "paid" tier.
+// (Free reports — horoscope/dasha/dosha/remedy — need no entitlement, so the API rejects them.)
+const PAID_REPORTS: { id: string; label: string }[] = [
+  { id: 'yearly', label: 'Varshaphala — Year Ahead' },
+  { id: 'compatibility', label: 'Kundali Milan — Compatibility' },
+  { id: 'marriage', label: 'Vivaha — Marriage' },
+  { id: 'career', label: 'Karma — Career' },
+  { id: 'finance', label: 'Artha — Finance' },
+  { id: 'travel', label: 'Yatra — Travel' },
+  { id: 'children', label: 'Santana — Children' },
+  { id: 'health', label: 'Svasthya — Health' },
+]
 
 function statusBadge(active: boolean) {
   return <Badge kind={active ? 'ok' : 'bad'}>{active ? 'Active' : 'Inactive'}</Badge>
@@ -33,10 +56,15 @@ function UserDetail({
   const { data, loading, error, refetch } = useAsync(() => getUser(userId), [userId])
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [actionMsg, setActionMsg] = useState<string | null>(null)
+  const [creditAmount, setCreditAmount] = useState('')
+  const [unlimitedDays, setUnlimitedDays] = useState('')
+  const [reportType, setReportType] = useState('')
 
   async function mutate(body: { is_active?: boolean; role?: UserRole }) {
     setBusy(true)
     setActionError(null)
+    setActionMsg(null)
     try {
       await updateUser(userId, body)
       refetch()
@@ -46,6 +74,64 @@ function UserDetail({
     } finally {
       setBusy(false)
     }
+  }
+
+  // Run a grant action: clear prior messages, show a success line, refresh the drawer.
+  async function runGrant(fn: () => Promise<string>) {
+    setBusy(true)
+    setActionError(null)
+    setActionMsg(null)
+    try {
+      const msg = await fn()
+      setActionMsg(msg)
+      refetch()
+      onChanged()
+    } catch (e) {
+      setActionError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function handleGrantCredits() {
+    const n = parseInt(creditAmount, 10)
+    if (!Number.isFinite(n) || n < 1 || n > 10000) {
+      setActionMsg(null)
+      setActionError('Enter a credit amount between 1 and 10,000, then click Add credits.')
+      return
+    }
+    void runGrant(async () => {
+      const r = await grantCredits(userId, n)
+      setCreditAmount('')
+      return `Added ${number(n)} credits — new balance ${number(r.chat_credits)}.`
+    })
+  }
+
+  function handleGrantUnlimited() {
+    const n = parseInt(unlimitedDays, 10)
+    if (!Number.isFinite(n) || n < 1 || n > 3650) {
+      setActionMsg(null)
+      setActionError('Enter days between 1 and 3650, then click Grant unlimited.')
+      return
+    }
+    void runGrant(async () => {
+      const r = await grantUnlimited(userId, n)
+      setUnlimitedDays('')
+      return `Unlimited chat granted until ${date(r.unlimited_until)}.`
+    })
+  }
+
+  function handleGrantReport() {
+    if (!reportType) {
+      setActionMsg(null)
+      setActionError('Choose a report from the list, then click Grant report.')
+      return
+    }
+    void runGrant(async () => {
+      const r = await grantReportEntitlement(userId, reportType)
+      setReportType('')
+      return `Unlocked the ${r.report_unlocked} report.`
+    })
   }
 
   return (
@@ -84,6 +170,18 @@ function UserDetail({
                     ['Phone', data.phone || '—'],
                     ['Email', data.email || '—'],
                     ['Chat credits', number(data.chat_credits ?? 0)],
+                    [
+                      'Plan',
+                      data.is_unlimited && data.unlimited_until
+                        ? `Unlimited until ${date(data.unlimited_until)}`
+                        : 'Free',
+                    ],
+                    [
+                      'Reports unlocked',
+                      data.unlocked_reports && data.unlocked_reports.length > 0
+                        ? data.unlocked_reports.join(', ')
+                        : '—',
+                    ],
                     ['Lifetime spend', money(data.total_paid)],
                     ['Paid orders', number(data.paid_orders)],
                     ['Tickets', number(data.ticket_count)],
@@ -103,8 +201,13 @@ function UserDetail({
 
               <Eyebrow style={{ marginTop: 18 }}>QUICK ACTIONS</Eyebrow>
               {actionError && (
-                <div className="admin-empty" style={{ padding: '10px 0' }}>
+                <div className="admin-empty" style={{ padding: '10px 0', color: '#d14343' }}>
                   {actionError}
+                </div>
+              )}
+              {actionMsg && (
+                <div className="admin-empty" style={{ padding: '10px 0', color: '#1e8e3e' }}>
+                  {actionMsg}
                 </div>
               )}
               <div className="admin-action-grid">
@@ -126,6 +229,65 @@ function UserDetail({
                     Make admin
                   </Btn>
                 )}
+              </div>
+
+              <Eyebrow style={{ marginTop: 18 }}>GRANT / COMP</Eyebrow>
+              <div className="admin-action-grid" style={{ alignItems: 'center' }}>
+                <span className="admin-meta-k" style={{ minWidth: 110 }}>
+                  Chat credits
+                </span>
+                <input
+                  className="admin-search-input"
+                  type="number"
+                  min={1}
+                  max={10000}
+                  placeholder="e.g. 10"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(e.target.value)}
+                  style={{ width: 110 }}
+                />
+                <Btn variant="accent" onClick={() => !busy && handleGrantCredits()}>
+                  {busy ? 'Working…' : 'Add credits'}
+                </Btn>
+              </div>
+              <div className="admin-action-grid" style={{ alignItems: 'center', marginTop: 8 }}>
+                <span className="admin-meta-k" style={{ minWidth: 110 }}>
+                  Unlimited (days)
+                </span>
+                <input
+                  className="admin-search-input"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  placeholder="e.g. 30"
+                  value={unlimitedDays}
+                  onChange={(e) => setUnlimitedDays(e.target.value)}
+                  style={{ width: 110 }}
+                />
+                <Btn variant="accent" onClick={() => !busy && handleGrantUnlimited()}>
+                  {busy ? 'Working…' : 'Grant unlimited'}
+                </Btn>
+              </div>
+              <div className="admin-action-grid" style={{ alignItems: 'center', marginTop: 8 }}>
+                <span className="admin-meta-k" style={{ minWidth: 110 }}>
+                  Unlock report
+                </span>
+                <select
+                  className="admin-search-input"
+                  value={reportType}
+                  onChange={(e) => setReportType(e.target.value)}
+                  style={{ width: 220 }}
+                >
+                  <option value="">Select a report…</option>
+                  {PAID_REPORTS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <Btn variant="accent" onClick={() => !busy && handleGrantReport()}>
+                  {busy ? 'Working…' : 'Grant report'}
+                </Btn>
               </div>
             </>
           )}

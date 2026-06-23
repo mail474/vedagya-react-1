@@ -60,6 +60,9 @@ export interface AdminUserDetail extends AdminUser {
   total_paid: number
   paid_orders: number
   ticket_count: number
+  is_unlimited?: boolean
+  unlimited_until?: string | null
+  unlocked_reports?: string[]
 }
 
 export interface ListUsersParams {
@@ -78,6 +81,17 @@ export const getUser = (id: string) => unwrap<AdminUserDetail>(api.get(`/api/v1/
 export const updateUser = (id: string, body: { is_active?: boolean; role?: UserRole }) =>
   unwrap<AdminUser>(api.patch(`/api/v1/admin/users/${id}`, body))
 
+export const grantCredits = (userId: string, credits: number) =>
+  unwrap<{ chat_credits: number }>(api.post(`/api/v1/admin/users/${userId}/credits`, { credits }))
+
+export const grantUnlimited = (userId: string, days: number) =>
+  unwrap<{ unlimited_until: string }>(api.post(`/api/v1/admin/users/${userId}/unlimited`, { days }))
+
+export const grantReportEntitlement = (userId: string, reportType: string) =>
+  unwrap<{ report_unlocked: string }>(
+    api.post(`/api/v1/admin/users/${userId}/report-entitlement`, { report_type: reportType }),
+  )
+
 // ─── Payments ───
 
 export type PaymentStatus = 'created' | 'paid' | 'failed'
@@ -92,6 +106,8 @@ export interface AdminPayment {
   amount: number // rupees
   currency: string
   category: string | null
+  product: string | null
+  reference: string | null
   receipt: string
   status: PaymentStatus
   created_at: string
