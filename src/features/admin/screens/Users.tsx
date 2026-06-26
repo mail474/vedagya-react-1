@@ -6,10 +6,12 @@ import {
   grantCredits,
   grantReportEntitlement,
   grantUnlimited,
+  listUserMuhuratHistory,
   listUsers,
   updateUser,
   errorMessage,
   type AdminUser,
+  type MuhuratHistoryItem,
   type UserRole,
 } from '../api'
 import { useAsync, useDebounced } from '../hooks'
@@ -54,6 +56,7 @@ function UserDetail({
   onChanged: () => void
 }) {
   const { data, loading, error, refetch } = useAsync(() => getUser(userId), [userId])
+  const muhuratHistory = useAsync(() => listUserMuhuratHistory(userId), [userId])
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionMsg, setActionMsg] = useState<string | null>(null)
@@ -289,11 +292,85 @@ function UserDetail({
                   {busy ? 'Working…' : 'Grant report'}
                 </Btn>
               </div>
+
+              <MuhuratHistorySection history={muhuratHistory} />
             </>
           )}
         </div>
       </aside>
     </div>
+  )
+}
+
+// ─── Muhurat history sub-section ───
+
+function MuhuratHistorySection({
+  history,
+}: {
+  history: { data: MuhuratHistoryItem[] | null; loading: boolean; error: string | null }
+}) {
+  const items = history.data ?? []
+
+  return (
+    <>
+      <Eyebrow style={{ marginTop: 18 }}>MUHURAT HISTORY</Eyebrow>
+      {history.loading && <div className="admin-empty">LOADING…</div>}
+      {history.error && !history.loading && (
+        <div className="admin-empty" style={{ color: '#d14343' }}>
+          {history.error}
+        </div>
+      )}
+      {!history.loading && !history.error && items.length === 0 && (
+        <div className="admin-empty">No paid muhurats yet.</div>
+      )}
+      {items.map((item) => (
+        <div
+          key={item.hash}
+          className="admin-meta-grid"
+          style={{ marginTop: 8, borderTop: '1px solid var(--admin-border)', paddingTop: 8 }}
+        >
+          <div className="admin-meta-cell">
+            <span className="admin-meta-k">Event</span>
+            <span className="admin-meta-v">{item.event_label ?? item.event ?? '—'}</span>
+          </div>
+          <div className="admin-meta-cell">
+            <span className="admin-meta-k">Persons</span>
+            <span className="admin-meta-v">{item.persons ?? '—'}</span>
+          </div>
+          <div className="admin-meta-cell">
+            <span className="admin-meta-k">Date range</span>
+            <span className="admin-meta-v">
+              {item.start_date ?? '?'} → {item.end_date ?? '?'}
+            </span>
+          </div>
+          <div className="admin-meta-cell">
+            <span className="admin-meta-k">Paid</span>
+            <span className="admin-meta-v">{date(item.paid_at)}</span>
+          </div>
+          <div className="admin-meta-cell">
+            <span className="admin-meta-k">Top dates</span>
+            <span className="admin-meta-v">
+              {item.top_dates.length > 0 ? item.top_dates.join(', ') : '—'}
+            </span>
+          </div>
+          <div className="admin-meta-cell">
+            <span className="admin-meta-k">Status</span>
+            <span className="admin-meta-v" style={{ display: 'flex', gap: 6 }}>
+              <Badge kind={item.is_upcoming ? 'ok' : 'warn'}>
+                {item.is_upcoming ? 'Upcoming' : 'Past'}
+              </Badge>
+              {item.status === 'pending' && <Badge kind="warn">Pending</Badge>}
+            </span>
+          </div>
+          <div className="admin-meta-cell" style={{ gridColumn: '1 / -1' }}>
+            <span className="admin-meta-k">Hash</span>
+            <span className="admin-meta-v admin-mono" style={{ fontSize: 11 }}>
+              {item.hash}
+            </span>
+          </div>
+        </div>
+      ))}
+    </>
   )
 }
 

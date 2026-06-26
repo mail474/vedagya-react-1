@@ -123,6 +123,24 @@ export interface ListPaymentsParams {
 export const listPayments = (params: ListPaymentsParams = {}) =>
   unwrap<Paginated<AdminPayment>>(api.get('/api/v1/admin/payments', { params }))
 
+// ─── Muhurat history (admin read) ───
+
+export interface MuhuratHistoryItem {
+  hash: string
+  event: string | null
+  event_label: string | null
+  persons: string | null
+  start_date: string | null
+  end_date: string | null
+  paid_at: string
+  top_dates: string[]
+  is_upcoming: boolean
+  status: 'ready' | 'pending'
+}
+
+export const listUserMuhuratHistory = (userId: string) =>
+  unwrap<MuhuratHistoryItem[]>(api.get(`/api/v1/admin/users/${userId}/muhurat-history`))
+
 // ─── Support (tickets admin) ───
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'

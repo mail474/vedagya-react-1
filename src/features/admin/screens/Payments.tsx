@@ -11,6 +11,10 @@ function productLabel(p: AdminPayment): string {
   if (p.product === 'chat_25') return '25 chats (₹99)'
   if (p.product === 'unlimited_month') return 'Unlimited (₹199)'
   if (p.product === 'report') return p.reference ? `Report: ${p.reference}` : 'Report'
+  if (p.product === 'muhurat')
+    return p.reference
+      ? `Personalised Muhurat (${p.reference.slice(0, 8)}…)`
+      : 'Personalised Muhurat'
   return p.category ?? '—'
 }
 
